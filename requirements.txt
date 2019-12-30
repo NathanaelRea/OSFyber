@@ -1,0 +1,4 @@
+matplotlib
+numpy
+pybind11
+meshpy
