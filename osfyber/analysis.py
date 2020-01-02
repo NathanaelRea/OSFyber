@@ -11,7 +11,7 @@ def Secant_Method(fct, _value, tol=10**-2, _iter=10**-10):
 	start:	the first input
 	tol:	The tolerance by witch to quit when the function return
 		is < |fct ret|
-	itter:	How much to step by in each loop
+	iter:	How much to step by in each loop
 	"""
 	step = 0
 	while True:
@@ -70,14 +70,12 @@ class fiber:
 	"""
 	A fiber is just a small piece of geometry.
 	It's only properties are area, coords, and material.
-	# Difference between: ... Does #2 save space/time?
-	# fiber.material.stress(strain)
-	# self.materials[fiber.mat_id].stress(strain)
 	"""
 	def __init__(self, area, coords, mat_id):
 		self.area = area
 		self.xy = coords
 		self.mat_id = mat_id
+		self.fail = False
 		# self.distance = None? # for quick calcs
 
 class fiber_model:
@@ -87,6 +85,8 @@ class fiber_model:
 	Such as M, and force ballance at a given curvature level
 	"""
 	def __init__(self):
+		"""Analysis Model Class
+		Funcitons to find equilibrium and return state data/ M from phi level"""
 		self.fibers = {}
 		self.materials = {}
 		# State Data
@@ -119,10 +119,11 @@ class fiber_model:
 		return sum_F - self.P
 	
 	def calc_M(self):
-		# TODO: Change this to save state. (Or have another fct that calls this fct)
-		# M is just one property of this solved curvature level
 		"""Find the internal moment of the centroid to balance the
 		External moment and the internal stress from curvature"""
+		# TODO: Change this to save state. (Or have another fct that calls this fct)
+		# M is just one property of this solved curvature level
+		
 		# Go through all elemenets (mesh/reinf) and calculate strain from linear centroid, then stress
 		# TODO - Find some transformation value c1*x+c2*y -> distance from strain reversal/centroid
 		# BUT ONLY CALCULATE THAT ONCE>>>> THEN JUST CALCULAT THE Sin(theta) OR WHATEVER TO FIND THE STEP
@@ -135,8 +136,9 @@ class fiber_model:
 			stress = self.materials[fiber.mat_id].stress(strain)
 			sum_M += fiber.area * stress * (self.zero_strain_location-fiber.xy[1])
 			self.states.append(self.materials[fiber.mat_id].state)
-		# TODO CHECK CONF CRUSH OR BAR FRACTURE
-		for mat in self.materials.values():
-			if mat.fail:
-				self.fail = True
+			fiber.fail = self.materials[fiber.mat_id].fail
+			if fiber.fail:
+				rnd_loc  = [round(i,3) for i in fiber.xy]
+				self.fail = fiber.fail + f"\nMat_id={fiber.mat_id}\nLocation={rnd_loc}"
+			
 		return sum_M

@@ -1,8 +1,8 @@
 # OSFyber
 
-Structural engineering tool to perform 2D moment curvature analysis of cross sections.
+Open Source 'Fyber' Structural Engineering Analysis Tool for Moment Curvature.
 
-Currently in pre-alpha. Still implementing features in to-do, generalizing code, and fixing bugs.
+Currently in pre-alpha. Still implementing features in todo, generalizing code, and fixing bugs.
 
 ## Installation
 
@@ -12,41 +12,60 @@ For the actively developed version:
 $ pip install git+https://github.com/NathanaelRea/OSFyber
 ```
 
+Or just download the zip from github and use pip install on the extracted folder.
+
 ## Examples
 
-### 1 Standard circular section with low confinemenet
+### Standard circular section with low confinemenet
 
 ```python
 from osfyber.system import FyberModel
 
-### CREATE A MODEL (default mesh size is 2 in^2)
-model = FyberModel(mesh_size=1)
+### CREATE A MODEL
+model = FyberModel()
 
 ### Set Materials
-model.add_material(id=1, type='concrete', fpc=4, ecp=-.002219, ecu=-.005)
-fple = model.conf_pressure('circle', fyh=60, bar=3, D=20, s=12)
-model.add_material(id=2, type='concrete', fpc=4, fple=fple)
-model.add_material(id=3, type='user', points=[[.002069,60],[.01,60],[.0189,70],[.0456,80],[.09,90],[.108,37.8]], mirror=True)
+model.add_material(id=1, type='concrete', fpc=5.2, ecp=-.002, ecu=-.005)
+fple = model.conf_pressure('circle', fyh=68, bar=4, D=31.5, s=3)
+model.add_material(id=2, type='concrete', fpc=5.2, fple=fple)
+model.add_material(id=3, type='steel', E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
 
 ### Set Geometry
-model.add_geometry('circle', mat_id=1, c=(0,0), D=24)
+model.add_geometry('circle', mat_id=1, c=(0,0), D=36)
 
-### Set longitudinal reinforcmenet, and optionally confinement
-model.add_reinforcement('circle', mat_id=3, D=20, c=(0,0), bar=5, count=8, conf_id=2)
+### Set longitudinal reinforcmenet, and optinally confinement
+model.add_reinforcement('circle', mat_id=3, D=29.5, c=(0,0), bar=9, count=12, conf_id=2)
+
+## ADD LOADING
+model.add_load('Axial', P=-1000)
 
 ### GENERATE MESH
 model.generate_mesh()
 
-### Display Material Stress Strain Plots and Generated Mesh
-#model.display_mat()
+### CHECK INPUT
+model.display_mat()
 #model.display_mesh()
 
 ### ANALYZE MODEL
 model.analyze()
 
+#model.export_results()
+
 ### DISPLAY MOMENT CURVATURE
 model.display_mc()
 ```
+
+Output from analysis:
+
+```
+Analysis ended at phi=0.0017
+Confined Concrete Crushing
+Max Available Strain=-0.01432
+Strain Experienced=-0.01512
+Mat_id=2
+Location=[3.281, 13.664]
+```
+
 
 ![Example 1 Material Unconfined Concrete](Pics/Example_1_Mat_1.png)
 
@@ -65,24 +84,5 @@ model.display_mc()
 
 ## TODO
 
-- Documetation
+[Trello](https://trello.com/b/FFrJVfhk/osfyber)
 
-- Export/save points from moment curvature
-
-- Generate facets from round trip of multiple section (python module for union/subtraction of polygons, then mesh)
-
-- Possibly Implement robbievanleeuwen/section-properties for ease of mesh manipulation
-
-- Colors on material display so it makes more sense
-
-- MIN/MAX strain in each material class - for plotting and indication of failure point
-
-LESS IMPORTANT
-
-- Ability to Change units
-
-- Remesh confiment to more closely represent spalling (not sure if would actually would capture experimental behavior better)
-
-- Click on patch in MC plot and see current strain/stress plot with marker on current
-
-- Ability to change material color indicators
