@@ -4,11 +4,9 @@ Open Source 'Fyber' Analysis Tool for Moment Curvature.
 
 Currently in pre-alpha. Still implementing features in todo, generalizing code, and fixing bugs.
 
-Check out the current development and future updates: [Trello](https://trello.com/b/FFrJVfhk/osfyber)
-
 ## Installation
 
-Directly install the master branch:
+For the actively developed version:
 
 ```
 $ pip install git+https://github.com/NathanaelRea/OSFyber
@@ -18,7 +16,7 @@ Or just download the zip from github and use pip install on the extracted folder
 
 ## Examples
 
-### Standard Confined Circular Column
+### Standard Circular Section
 
 ```python
 from osfyber.system import FyberModel
@@ -57,7 +55,17 @@ model.analyze()
 model.display_mc()
 ```
 
-Output from model.display_mat():
+Output from analysis:
+
+```
+Analysis ended at phi=0.0017
+Confined Concrete Crushing
+Max Available Strain=-0.01432
+Strain Experienced=-0.01512
+Mat_id=2
+Location=[3.281, 13.664]
+```
+
 
 ![Example 1 Material Unconfined Concrete](Pics/Example_1_Mat_1.png)
 
@@ -65,19 +73,16 @@ Output from model.display_mat():
 
 ![Example 1 Material Steel](Pics/Example_1_Mat_3.png)
 
-Output from model.analyze():
+![Example 1 Initial Plot](Pics/Example_1_Pic_1.png)
 
-```
-Analysis ended at phi=0.0017
-Failure: Confined Concrete Crushing
-	Max Available Strain=-0.01432
-	Strain Experienced=-0.01512
-	Mat_id=2
-	Location=[3.281, 13.664]
-```
+![Example 1 First point within yield](Pics/Example_1_Pic_2.png)
 
-Output from model.display_mc():
+![Example 1 First point with cover crushing on compression end](Pics/Example_1_Pic_3.png)
 
-![Example 1 MC Scrub](Pics/Example_1_Scrub.gif)
+![Example 1 Ultimate ductility - Failure of confined concrete](Pics/Example_1_Pic_4.png)
 
-![Example 1 Interaction](Pics/Example_1_Interaction.gif)
+
+## TODO
+
+[Trello](https://trello.com/b/FFrJVfhk/osfyber)
+
