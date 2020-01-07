@@ -11,8 +11,13 @@ from meshpy.triangle import MeshInfo, build
 import matplotlib.pyplot as plt
 from matplotlib.patches import CirclePolygon, Ellipse
 from matplotlib.widgets import Slider
+import matplotlib.lines as mlines
+from matplotlib.path import Path
 # Gif Export of disp_mc
 import matplotlib.animation as anim
+# Ignore display_mc_2x2() tight layout warning
+#import warnings
+
 
 class FyberModel:
     """
@@ -160,7 +165,7 @@ class FyberModel:
             area = self.mesh_areas[n]
             self.analysis_model.fibers[n] = fiber(area, centroid, self.ele_mat[n])
             max_y = max(max_y,centroid[1])
-            min_y = max(max_y,centroid[1])
+            min_y = min(min_y,centroid[1])
         self.analysis_model.maxy = max_y
         self.analysis_model.miny = min_y
         meh = max(self.mesh_centroids.keys())
@@ -174,7 +179,7 @@ class FyberModel:
                 n += 1
         self.analysis_model.materials = self.materials
         # Generate Inital States
-        self.states[0] = state([0]*len(self.mesh.elements)+[8]*(n-1), 0, 0) 
+        self.states[0] = state([0]*len(self.mesh.elements)+[8]*(n-1), 0, 0, 0) 
         self.phi_list = [0]
         self.M_list = [0]
     
@@ -183,7 +188,8 @@ class FyberModel:
         # setup the model with the current mesh discretization
         self.gen_fiber_model()
         # TODO allow step change?
-        delta_phi = 2e-5
+        #delta_phi = 5e-6
+        delta_phi = 1e-5
         for step in range(1,1000):
             # Setup this step to run equilibrium analysis
             phi = step * delta_phi
@@ -200,9 +206,9 @@ class FyberModel:
             if self.analysis_model.fail:
                 print(f"Analysis ended at phi={round(phi,8)}\nFailure: {self.analysis_model.fail}")
                 break
-            # TODO Not sure If I need - might be good if we don't see a failure condition?
-            #if M == 0:
-            #    print("M Failure")
+            # Don't necessarily want to break for tension failure - Say, if entire section is steel
+            #if M < 1:
+            #    print("Capacity of entire section failed")
             #    break
     
     def color_from_state(self, state):
@@ -342,7 +348,7 @@ class FyberModel:
         
         print("Saving animated gif. This will take a while and take several dozen megs of space.\nIt's saving full frames and not optimizing.")
         test = anim.FuncAnimation(fig, frame, frames=range(len(self.states)))
-        test.save("Moment_Curvature.gif", fps=8)
+        test.save("Moment_Curvature.gif", fps=16)
         
     def display_mc(self):
         """Plot the moment curvature, and interactive section viewer"""
@@ -382,14 +388,14 @@ class FyberModel:
         ax_mc.ticklabel_format(axis='x', style='sci', scilimits=(-2,2), useMathText=True)
         
         # Setup Sliders for interatablility to look through results
-        def update(state):
-            state = int(state)
-            self.state_id = int(state)
+        def update(phi_step):
+            phi_step = int(phi_step)
+            self.state_id = int(phi_step)
             # Update Patch  colors
-            state_colors = [self.color_from_state(e) for e in self.states[state].mat_state]
+            state_colors = [self.color_from_state(e) for e in self.states[phi_step].mat_state]
             for patch,color in zip(patches,state_colors):
                 patch.set_facecolor(color)
-            point.center = (self.phi_list[state],self.M_list[state])
+            point.center = (self.phi_list[phi_step],self.M_list[phi_step])
             fig.canvas.draw_idle()
         ax_slider = plt.axes([0.117, 0.01, 0.79, 0.02], facecolor='White')
         slider_fct = Slider(ax_slider, 'STEP', 0, num_steps, valinit=0, valstep=1, valfmt='%i')
@@ -414,7 +420,7 @@ class FyberModel:
         # TODO SEPARATE PLOT FOR FORCE/STRESS DISTRIBUTION?
         # TODO PATCH COLLECTION FOR INSTANTANEOUS? COLOR UPDATE?
         fig, axes  = plt.subplots(2, 2, figsize=(self.figsize*1.5,self.figsize*1.5))
-        ax             = axes[0,0]
+        ax           = axes[0,0]
         ax_mc        = axes[0,1]
         ax_strain    = axes[1,0]
         ax_stress    = axes[1,1]
@@ -424,16 +430,19 @@ class FyberModel:
             polygons.append(poly_pts)
         patches = []
         # Draw Polygons for mesh and reinformcent
+        i = 0
         for p in polygons:
-            new_patch = plt.Polygon(p,fc=(0.8,0.8,0.8),ec='black',zorder=0, picker=.01)
+            new_patch = plt.Polygon(p,fc=(0.8,0.8,0.8),ec='black',zorder=0, picker=.01, gid=str(i))
             patches.append(new_patch)
             ax.add_patch(new_patch)
+            i += 1
         if self.reinforcement:
             for reinf_group in self.reinforcement:
                 for centroid in reinf_group.points:
-                    new_patch = CirclePolygon(centroid,reinf_group.radius,8,fc='White',ec='black',zorder=15, picker=.01)
+                    new_patch = CirclePolygon(centroid,reinf_group.radius,8,fc='White',ec='black',zorder=15, picker=.01, gid=str(i))
                     patches.append(new_patch)
                     ax.add_patch(new_patch)
+                    i += 1
         # Plot nodal points of mesh (useful to auto set axes limts)
         ax.scatter(*zip(*self.mesh.points),c='black',s=4,zorder=5)
         num_steps = len(self.states)-1
@@ -452,20 +461,49 @@ class FyberModel:
             phi_step = int(phi_step)
             self.state_id = int(phi_step)
             # Update Patch  colors
-            state_colors = [self.color_from_state(e) for e in self.states[state].mat_state]
+            state_colors = [self.color_from_state(e) for e in self.states[phi_step].mat_state]
             for patch,color in zip(patches,state_colors):
                 patch.set_facecolor(color)
             point.center = (self.phi_list[phi_step],self.M_list[phi_step])
-            ax_strain.plot([self.states[phi_step].min_strain,self.states[phi_step].max_strain],[0,1],'r')
+            
+            x = [self.states[phi_step].min_strain, self.states[phi_step].max_strain]
+            y = [self.analysis_model.miny, self.analysis_model.maxy]
+            global line, line2, line3
+            line.set_data(x, y)
+            line2.set_data([-1,1], [self.states[phi_step].yloc,self.states[phi_step].yloc])
+            line3.set_data([self.analysis_model.miny*1.1,self.analysis_model.maxy*1.1], [self.states[phi_step].yloc,self.states[phi_step].yloc])
             fig.canvas.draw_idle()
+        
+        # Setup mesh onclick event to view stress/strain location of each fiber
+        def onpick(event):
+            #print(event.mouseevent.__dict__)
+            #print(event.artist.__dict__)
+            #print(event.canvas.__dict__)
+            patch_id = int(event.artist._gid)
+            strain = self.states[self.state_id].strains[patch_id]
+            stress = self.states[self.state_id].stresses[patch_id]
+            self.display_materials(self.ele_mat[patch_id], (strain,stress))
+            return True
+        fig.canvas.mpl_connect('pick_event', onpick)
+        
+        
         ax_slider = plt.axes([0.117, 0.01, 0.79, 0.02], facecolor='white')
         slider_fct = Slider(ax_slider, 'STEP', 0, num_steps, valinit=0, valstep=1, valfmt='%i')
         slider_fct.on_changed(update)
         
-        # Debugging strain/stress plots
-        ax_strain.plot([0,0],[0,1],'k')
-        ax_strain.plot([0,0],[0,1],'r')
-        ax_stress.plot([0,1],[0,1])
+        # Strain plot
+        ax_strain.plot([0,0],[self.analysis_model.miny,self.analysis_model.maxy],'k')
+        ax_strain.set_xlim([self.states[len(self.states)-1].min_strain*1.05, self.states[len(self.states)-1].max_strain*1.05])
+        
+        global line, line2, line3
+        line,  = ax_strain.plot([0,0], [self.analysis_model.miny,self.analysis_model.maxy], color='Red')
+        phi_step = 0
+        line2, = ax_strain.plot([-1,1], [self.states[phi_step].yloc,self.states[phi_step].yloc], color='Blue')
+        line3, = ax.plot([self.analysis_model.miny*1.1,self.analysis_model.maxy*1.1], [self.states[phi_step].yloc,self.states[phi_step].yloc], color='Red')
+        
+        # Stress Plot
+        ax_stress.plot([0,0],[self.analysis_model.miny,self.analysis_model.maxy],'k')
+        ax_stress.text(0, 0, "This Plot Was\nIntentionally Left Blank\n(For Now)")
         
         plt.tight_layout(rect=(0,.05,1,1))
         plt.show()

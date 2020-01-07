@@ -6,6 +6,8 @@ Currently in pre-alpha. Still implementing features in todo, generalizing code, 
 
 Check out the current development and future updates: [Trello](https://trello.com/b/FFrJVfhk/osfyber)
 
+![Example 1 MC Scrub](Pics/Example_1_Scrub.gif)
+
 ## Installation
 
 Directly install the master branch:
@@ -39,25 +41,27 @@ model.add_geometry('circle', mat_id=1, c=(0,0), D=36)
 model.add_reinforcement('circle', mat_id=3, D=29.5, c=(0,0), bar=9, count=12, conf_id=2)
 
 ## ADD LOADING (Positive is Compression)
-model.add_load('Axial', P=1000)
+model.set_load('Axial', P=1000)
 
 ### GENERATE MESH
 model.generate_mesh()
 
 ### CHECK INPUT
-model.display_mat()
+model.display_materials()
 #model.display_mesh()
 
 ### ANALYZE MODEL
 model.analyze()
 
+### SAVE RESULTS
 #model.export_results()
 
 ### DISPLAY MOMENT CURVATURE
 model.display_mc()
+#model.display_mc_2x2()
 ```
 
-Output from model.display_mat():
+Output from display_materials():
 
 ![Example 1 Material Unconfined Concrete](Pics/Example_1_Mat_1.png)
 
@@ -76,8 +80,14 @@ Failure: Confined Concrete Crushing
 	Location=[3.281, 13.664]
 ```
 
-Output from model.display_mc():
+Fully Interactive Moment Curvature Diagram. Ability to use the slider to step through all the states. Can also click on a mesh to see internal properties. Can use Mouse on either plot to view (x,y) values in bottom right.
 
-![Example 1 MC Scrub](Pics/Example_1_Scrub.gif)
+Output from display_mc():
 
-![Example 1 Interaction](Pics/Example_1_Interaction.gif)
+![Example 1 Disp Mc](Pics/Example_1_Disp_MC.png)
+
+(In Current Development - 2x2 Plot of Section, Moment Curvature, Strain Diagram, Stress Diagram)
+
+Output from display_mc_2x2():
+
+![Example 1 2x2](Pics/Example_1_Disp_2x2.png)
