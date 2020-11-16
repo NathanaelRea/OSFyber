@@ -1,84 +1,94 @@
 from math import sqrt
 import numpy as np
+from sys import exit
 
 """
-Materials and explanations:
-Unconfined Concrete        Create a material from Mander-Unconfined model given standard material properties.
-Confined Concrete        Create a material from Mander-Confined model, given confinement pressure.
-                            can be calculatled with osfyber.conf_pressure()
-Steel                    Create a material from E, Esh, ey, and other common steel properties
+MATERIALS
+Unconfined Concrete     Create a material from Mander-Unconfined model given standard material properties.
+Confined Concrete       Create a material from Mander-Confined model, given confinement pressure.
+                            can be calculated with osfyber.conf_pressure()
+Steel                   Create a material from E, Esh, ey, and other common steel properties
 User Defined            Create an arbitrary material given several points of (strain,stress)
 """
 
-def conf_pressure_circ(fyh, bar, dia, s):
+
+def conf_pressure_circle(fyh, bar, dia, s):
     """
     Confining pressure from a circular section
     """
-    bars = {3:(0.375,0.110), 4:(0.500,0.200), 5:(0.625,0.310), 
-        6:(0.750,0.440), 7:(0.875,0.600), 8:(1.000,0.790), 9:(1.128,1.000), 
-        10:(1.270,1.270), 11:(1.410,1.560), 14:(1.693,2.250), 18:(2.257,4.000)}
-    Ab = bars[bar][1]
-    ke = (1 - s/(2*dia) )**2
-    fple = ke*2*Ab*fyh/(dia*s)
+    # TODO put bars somewhere else
+    bars = {3: (0.375, 0.110), 4: (0.500, 0.200), 5: (0.625, 0.310),
+            6: (0.750, 0.440), 7: (0.875, 0.600), 8: (1.000, 0.790), 9: (1.128, 1.000),
+            10: (1.270, 1.270), 11: (1.410, 1.560), 14: (1.693, 2.250), 18: (2.257, 4.000)}
+    area = bars[bar][1]
+    ke = (1 - s/(2*dia))**2
+    fple = ke*2*area*fyh/(dia*s)
     return fple
 
-def conf_pressure_rect(fyh, bar, s, b, w, nx, ny):
+
+def conf_pressure_rect(fyh, bars, s, b, w, nx, ny):
     """
     Confining pressure from a rectangular section
     """
-    db = self.bars[bar][0]
-    Ab = self.bars[bar][1]
+    # Is s_prime suppose to be hard coded?
+    s_prime = 2
+    # TODO fix bars
+    db = bars[0]
+    area_bar = bars[1]
     hx = b
     hy = w
-    Ashx = Ab*nx
-    Ashy = Ab*ny
+    a_shx = area_bar*nx
+    a_shy = area_bar*ny
     sum_w_sqr = 2*(nx-1)*(hx/(nx-1)-db)**2 + 2*(ny-1)*(hy/(ny-1)-db)**2
-    ### Confinement props
-    ke   = (1-(sum_w_sqr/(6*hx*hy)))*(1-s_prime/(2*hx))*(1-s/(2*hy))
-    fplx = Ashx*fyh / (hy*s)
-    fply = Ashy*fyh / (hx*s)
-    fple = ke * max(sqrt(fplx*fply), 0.25*max(fplx,fplx))
-    return fplelf.bars[bar][1]
-    ke = (1 - s/(2*dia) )**2
-    fple = ke*2*Ab*fyh/(dia*s)
+    # CONFINEMENT PROPERTIES
+    ke = (1-(sum_w_sqr/(6*hx*hy)))*(1-s_prime/(2*hx))*(1-s/(2*hy))
+    fpl_x = a_shx*fyh / (hy*s)
+    fpl_y = a_shy*fyh / (hx*s)
+    fple = ke * max(sqrt(fpl_x*fpl_y), 0.25*max(fpl_x, fpl_x))
+    # TODO Not sure what these are for
+    # ke = (1 - s/(2*db) )**2
+    # fple = ke*2*area_bar*fyh/(db*s)
     return fple
 
 
-class reinf_props:
-    """Store values for reinforcement ring/line"""
+class ReinforcementProperties:
+    """Store a list of bar locations as points"""
     def __init__(self, points, bar, mat_id):
         # Standard Bar Properties #:( db (in) ,Ab (in^2) )
-        bars = {3:(0.375,0.110), 4:(0.500,0.200), 5:(0.625,0.310), 
-            6:(0.750,0.440), 7:(0.875,0.600), 8:(1.000,0.790), 9:(1.128,1.000), 
-            10:(1.270,1.270), 11:(1.410,1.560), 14:(1.693,2.250), 18:(2.257,4.000)}
+        bars = {3: (0.375, 0.110), 4: (0.500, 0.200), 5: (0.625, 0.310),
+                6: (0.750, 0.440), 7: (0.875, 0.600), 8: (1.000, 0.790), 9: (1.128, 1.000),
+                10: (1.270, 1.270), 11: (1.410, 1.560), 14: (1.693, 2.250), 18: (2.257, 4.000)}
         self.radius = bars[bar][0]/2
-        self.area   = bars[bar][1]
+        self.area = bars[bar][1]
         self.points = points
         self.mat_id = mat_id
 
 
-class unconf_conc_material:
+class UnconfConcMat:
     """Model behavior from given concrete material properties"""
     def __init__(self, kwargs):
+        self.fail = False
+        self.state = 'White'
         self.fpc = kwargs['fpc']
-        ### General concrete properties
+        # General concrete properties
         # 1 psi == 0.006894757 MPa
         ratio = 1000
-        #ratio = 0.006894757
+        # Testing metric input conversion
+        # ratio = 0.006894757
         if 'Ec' in kwargs:
             self.Ec = kwargs['Ec']
         else:
             self.Ec = sqrt(self.fpc * ratio) * 57
         self.fcr = 4*sqrt(self.fpc*ratio)/ratio
         
-        ### Unconf properties
+        # Unconfined properties
         # 3600 psi == 24.8211 MPa
         m = 1+3600/(self.fpc*ratio)/ratio
         if 'ecp' in kwargs:
             self.ecp = kwargs['ecp']
         else:
             self.ecp = -self.fpc*m/self.Ec
-        #self.r_unconf = 1/(1+self.fpc/(self.Ec*self.ecp))
+        # self.r_unconf = 1/(1+self.fpc/(self.Ec*self.ecp))
         self.r_unconf = 2
         
         if 'ecu' in kwargs:
@@ -91,7 +101,7 @@ class unconf_conc_material:
         else:
             self.tension = False
         
-        # Importatnt points to plot (In between colors) - also gives min/max strain
+        # Important points to plot (In between colors) - also gives min/max strain
         self.useful_points = [self.ecu, self.ecp*2, self.ecp, 0]
         
     def stress(self, ec):
@@ -100,13 +110,13 @@ class unconf_conc_material:
         if ec > 0:
             # Tension Branch
             if self.tension:
-                return self.tension(ec)
+                return ec  # not sure if this is right
             else:
                 self.state = 'White'
                 return 0
         else:
             # Compression Branch
-            if ec >= self.ecp *2:
+            if ec >= self.ecp * 2:
                 # Below ultimate unconfined strain
                 r = self.r_unconf
                 ecp = self.ecp
@@ -116,7 +126,7 @@ class unconf_conc_material:
                 else:
                     self.state = 1
                 return fc
-            elif ec >=  self.ecu:
+            elif ec >= self.ecu:
                 slope = self.stress(2*self.ecp)/(2*self.ecp - self.ecu)
                 b = -slope*self.ecu
                 self.state = 7
@@ -126,11 +136,10 @@ class unconf_conc_material:
                 # Don't need to fail if unconf fails
                 return 0
             
-    def tension(self, ec):
+    # def tension(self, ec):
+    def tension(self):
         """Output tension concrete stress for a given strain"""
-        self.state = 8
-        return 0
-        """
+        """ Need to check if user wants tension, if they do then use something like:
         elastic = ec * self.Ec
         if elastic > self.fcr:
             if ec <= 0.002:
@@ -141,13 +150,18 @@ class unconf_conc_material:
         else:
             return elastic
         """
+        self.state = 8
+        return 0
 
-class conf_conc_material:
+
+class ConfConcMat:
     """Model behavior from given concrete material properties"""
     def __init__(self, kwargs):
+        self.fail = False
+        self.state = 'White'
         self.fpc = kwargs['fpc']
         self.fple = kwargs['fple']
-        ### General concrete properties
+        # General concrete properties
         # 1 psi == 0.006894757 MPa
         ratio = 1000
         if 'Ec' in kwargs:
@@ -156,17 +170,17 @@ class conf_conc_material:
             self.Ec = sqrt(self.fpc * ratio) * 57
         self.fcr = 4*sqrt(self.fpc*ratio)/ratio
         
-        ### Confined properties
-        #k1 = 5.4/sqrt(1+5*(self.fple/self.fpc))
-        #self.fpcc = -self.fpc*(1+k1*(self.fple/self.fpc))
-        #self.fpcc = -self.fpc*ratio * (2.254*sqrt(1 + (7.94*self.fple)/self.fpc)-(2*self.fple / self.fpc) - 1.254)
+        # Confined properties
+        # k1 = 5.4/sqrt(1+5*(self.fple/self.fpc))
+        # self.fpcc = -self.fpc*(1+k1*(self.fple/self.fpc))
+        # self.fpcc = -self.fpc*ratio * (2.254*sqrt(1 + (7.94*self.fple)/self.fpc)-(2*self.fple / self.fpc) - 1.254)
         self.fpcc = -6.899
         
         # TODO HARDCODED ASSUME 0.002????
-        #self.epc0 = -0.002219
+        # self.epc0 = -0.002219
         self.epc0 = -0.002
         
-        m = 1+3600/(self.fpc*ratio)/ratio
+        # m = 1+3600/(self.fpc*ratio)/ratio
         if 'epcc' in kwargs:
             self.epcc = kwargs['ecp']
         else:
@@ -174,17 +188,17 @@ class conf_conc_material:
         
         self.Esec = self.fpcc / self.epcc
         self.r_conf = self.Ec/(self.Ec - self.Esec)
-        #self.ecu = self.epcc*(1+20*(self.fple/self.fpc))
+        # self.ecu = self.epcc*(1+20*(self.fple/self.fpc))
         self.ecu = - (0.004 + 1.4 * 0.00831 * 68 * 0.09 / 6.899)
         # Debug Variables
-        #print(self.__dict__)
+        # print(self.__dict__)
         
         if 'tension' in kwargs:
             self.tension = kwargs['tension']
         else:
             self.tension = False
         
-        # Importatnt points to plot (In between colors) - also gives min/max strain
+        # Important points to plot (In between colors) - also gives min/max strain
         self.useful_points = [self.ecu, self.epcc, 0, self.fcr, 0.002]
         
     def stress(self, ec):
@@ -193,9 +207,10 @@ class conf_conc_material:
         if ec > 0:
             self.state = "White"
             return 0
-            # Tension Branch
+            # TODO Tension Branch - might need this if user specifies
+            # noinspection PyUnreachableCode
+            """
             self.state = 'Cyan'
-            #return 0 #TESTING
             elastic = ec * self.Ec
             if elastic > self.fcr:
                 if ec <= 0.002:
@@ -206,6 +221,7 @@ class conf_conc_material:
                     return 0
             else:
                 return elastic
+            """
         else:
             # Compression Branch
             if ec >= self.ecu:
@@ -220,12 +236,18 @@ class conf_conc_material:
             else:
                 # Over ultimate strain - Hoop fracture
                 self.state = 'Black'
-                self.fail = f"Confined Concrete Crushing\n\tMax Available Strain={round(self.ecu,5)}\n\tStrain Experienced={round(ec,5)}"
+                self.fail = f"Confined Concrete Crushing\n" \
+                            f"\tMax Available Strain={round(self.ecu,5)}\n" \
+                            f"\tStrain Experienced={round(ec,5)}"
                 return 0
 
-class steel_material:
+
+# noinspection PyPep8Naming
+class SteelMat:
     """Model behavior from given steel material properties"""
     def __init__(self, E, fy, fsu, e_sh, e_su, P):
+        self.fail = False
+        self.state = 'Black'
         # Needed steel properties
         self.Es = E
         self.fy = fy
@@ -235,21 +257,21 @@ class steel_material:
         self.e_su = e_su
         self.P = P
         
-        # Importatnt points to plot (In between colors) - also gives min/max strain
+        # Important points to plot (In between colors) - also gives min/max strain
         self.useful_points = [-self.e_su, -self.e_sh, -self.e_y, 0, self.e_y, self.e_sh, self.e_su]
         
     def stress(self, e):
         """Output stress in steel from a given strain"""
-        self.fail = False
         # TODO - Combine ten/comp, multiply by strain/abs(strain) for sign
+        self.fail = False
         if e < 0:
-            #Mirroed Response of tension
+            # Mirrored Response of tension
             if e > -self.e_y:
                 # Elastic
                 self.state = 'Yellow'
                 return self.Es * e
             elif e > -self.e_sh:
-                # Psudo Plastic Before SH
+                # Pseudo Plastic Before SH
                 self.state = 'Pink'
                 return -self.fy
             elif e > -self.e_su:
@@ -261,16 +283,18 @@ class steel_material:
             else:
                 # Tension Fracture
                 self.state = 'Black'
-                self.fail = f"Steel Fracture\n\tMax Available Strain={abs(round(self.e_su,5))}\n\tStrain Experienced={abs(round(e,5))}"
+                self.fail = f"Steel Fracture\n" \
+                            f"\tMax Available Strain={abs(round(self.e_su,5))}\n" \
+                            f"\tStrain Experienced={abs(round(e,5))}"
                 return 0
         else:
-            ### Tension Branch
+            # Tension Branch
             if e < self.e_y:
                 # Elastic
                 self.state = 'Yellow'
                 return self.Es * e
             elif e < self.e_sh:
-                # Psudo Plastic Before SH
+                # Pseudo Plastic Before SH
                 self.state = 'Pink'
                 return self.fy
             elif e < self.e_su:
@@ -282,13 +306,19 @@ class steel_material:
             else:
                 # Tension Fracture
                 self.state = 'Black'
-                self.fail = f"Steel Fracture\n\tMax Available Strain={abs(round(self.e_su,5))}\n\tStrain Experienced={abs(round(e,5))}"
+                self.fail = f"Steel Fracture\n" \
+                            f"\tMax Available Strain={abs(round(self.e_su,5))}\n" \
+                            f"\tStrain Experienced={abs(round(e,5))}"
                 return 0
 
-class user_material:
+
+class UserMat:
     """Model behavior from given (strain,stress) points"""
     def __init__(self, points, mirror=False):
-        self.strains  = [i[0] for i in points]
+        self.fail = False
+        self.state = 'White'
+
+        self.strains = [i[0] for i in points]
         self.stresses = [i[1] for i in points]
         self.yield_strain = abs(self.strains[1])
         self.mirror = mirror
@@ -301,17 +331,17 @@ class user_material:
             # copy points over line y=-x
             if min(self.strains) < 0:
                 print("You can't mirror a user material if there are negative strain values")
-                sys.exit()
+                exit()
             # if there's a point of 0 strain, don't copy it
             # or maybe there's a np function to remove duplicates?
             if min(self.strains) == 0:
-                self.strains  = [-i for i in self.strains[::-1]] + self.strains[1:]
+                self.strains = [-i for i in self.strains[::-1]] + self.strains[1:]
                 self.stresses = [-i for i in self.stresses[::-1]] + self.stresses[1:]
             else:
-                self.strains  = [-i for i in self.strains[::-1]] + self.strains
+                self.strains = [-i for i in self.strains[::-1]] + self.strains
                 self.stresses = [-i for i in self.stresses[::-1]] + self.stresses
             
-        # Importatnt points to plot (In between colors) - also gives min/max strain
+        # Important points to plot (In between colors) - also gives min/max strain
         self.useful_points = self.strains
             
     def stress(self, e):
@@ -319,9 +349,11 @@ class user_material:
         self.fail = False
         if (e < min(self.strains)) or (e > max(self.strains)):
             # No more strength - below min or above max strain
-            if (self.mirror):
+            if self.mirror:
                 # stop analysis if user material is mirrored
-                self.fail = f"User Material Strain Limit\n\tMax Available Strain={abs(round(self.strains[0],5))}\n\tStrain Experienced={abs(round(e,5))}"
+                self.fail = f"User Material Strain Limit\n" \
+                            f"\tMax Available Strain={abs(round(self.strains[0],5))}\n" \
+                            f"\tStrain Experienced={abs(round(e,5))}"
             self.state = 'Black'
             return 0
         if abs(e) < self.yield_strain:
