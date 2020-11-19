@@ -1,9 +1,10 @@
 # Module Imports
-from osfyber.analysis import FiberModel, Fiber, secant_method, State
+from osfyber.analysis import FiberModel, Fiber, State
 from osfyber.materials import *
 # Math
 import numpy as np
 from math import hypot
+from scipy.optimize import newton
 # Meshing
 from meshpy.geometry import GeometryBuilder, make_circle
 # TODO from meshpy.geometry import make_box
@@ -23,7 +24,6 @@ from sys import exit
 """
 TODO better analysis - find better step size based on size?
 TODO better analysis - find maximum tension/compression and throw error if static force too high
-TODO protected or private class variables in my functions?
 """
 
 
@@ -223,7 +223,8 @@ class FyberModel:
             # Setup this step to run equilibrium analysis
             phi = step * delta_phi
             self.analysis_model.phi = phi
-            zero_strain = secant_method(self.analysis_model.force_balance, self.analysis_model.zero_strain_location)
+            # I'm not sure if scipy.optimize.newton can fail here, might need to catch exception with bisection
+            zero_strain = newton(self.analysis_model.force_balance, self.analysis_model.zero_strain_location)
             self.analysis_model.zero_strain_location = zero_strain
             # Get Moment at current state
             moment = self.analysis_model.calc_moment()
@@ -302,7 +303,7 @@ class FyberModel:
         patches = []
         for i, pt_ids in enumerate(self.mesh.elements):
             p = [self.mesh.points[pt_id] for pt_id in pt_ids]
-            new_patch = plt.Polygon(p, fc=(0.8, 0.8, 0.8), ec='black', zorder=0)
+            new_patch = plt.Polygon(p, fc="Gray", ec='black', zorder=0)
             patches.append(new_patch)
             ax.add_patch(new_patch)
         for reinforce_group in self.reinforcement:
@@ -387,7 +388,7 @@ class FyberModel:
         # Draw Polygons for mesh and reinforcement
         i = 0
         for p in polygons:
-            new_patch = plt.Polygon(p, fc=(0.8, 0.8, 0.8), ec='black', zorder=0, picker=.01, gid=str(i))
+            new_patch = plt.Polygon(p, fc="Gray", ec='black', zorder=0, picker=.01, gid=str(i))
             patches.append(new_patch)
             ax.add_patch(new_patch)
             i += 1
@@ -459,7 +460,7 @@ class FyberModel:
         # Draw Polygons for mesh and reinforcement
         i = 0
         for p in polygons:
-            new_patch = plt.Polygon(p, fc=(0.8, 0.8, 0.8), ec='black', zorder=0, picker=.01, gid=str(i))
+            new_patch = plt.Polygon(p, fc="Gray", ec='black', zorder=0, picker=.01, gid=str(i))
             patches.append(new_patch)
             ax.add_patch(new_patch)
             i += 1

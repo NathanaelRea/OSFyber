@@ -1,6 +1,7 @@
 from math import sqrt
 import numpy as np
 from sys import exit
+from osfyber.standardsizes import Standard
 
 """
 MATERIALS
@@ -12,34 +13,28 @@ User Defined            Create an arbitrary material given several points of (st
 """
 
 
-def conf_pressure_circle(fyh, bar, dia, s):
+def conf_pressure_circle(fyh, bar_number, dia, s):
     """
     Confining pressure from a circular section
     """
-    # TODO put bars somewhere else
-    bars = {3: (0.375, 0.110), 4: (0.500, 0.200), 5: (0.625, 0.310),
-            6: (0.750, 0.440), 7: (0.875, 0.600), 8: (1.000, 0.790), 9: (1.128, 1.000),
-            10: (1.270, 1.270), 11: (1.410, 1.560), 14: (1.693, 2.250), 18: (2.257, 4.000)}
-    area = bars[bar][1]
+    bar = Standard().bar(bar_number)
     ke = (1 - s/(2*dia))**2
-    fple = ke*2*area*fyh/(dia*s)
+    fple = ke * 2 * bar.area * fyh/(dia*s)
     return fple
 
 
-def conf_pressure_rect(fyh, bars, s, b, w, nx, ny):
+def conf_pressure_rect(fyh, bar_number, s, b, w, nx, ny):
     """
     Confining pressure from a rectangular section
     """
     # Is s_prime suppose to be hard coded?
     s_prime = 2
-    # TODO fix bars
-    db = bars[0]
-    area_bar = bars[1]
+    bar = Standard().bar(bar_number)
     hx = b
     hy = w
-    a_shx = area_bar*nx
-    a_shy = area_bar*ny
-    sum_w_sqr = 2*(nx-1)*(hx/(nx-1)-db)**2 + 2*(ny-1)*(hy/(ny-1)-db)**2
+    a_shx = bar.area * nx
+    a_shy = bar.area * ny
+    sum_w_sqr = 2*(nx-1)*(hx/(nx-1)-bar.db)**2 + 2*(ny-1)*(hy/(ny-1)-bar.db)**2
     # CONFINEMENT PROPERTIES
     ke = (1-(sum_w_sqr/(6*hx*hy)))*(1-s_prime/(2*hx))*(1-s/(2*hy))
     fpl_x = a_shx*fyh / (hy*s)
@@ -47,19 +42,16 @@ def conf_pressure_rect(fyh, bars, s, b, w, nx, ny):
     fple = ke * max(sqrt(fpl_x*fpl_y), 0.25*max(fpl_x, fpl_x))
     # TODO Not sure what these are for
     # ke = (1 - s/(2*db) )**2
-    # fple = ke*2*area_bar*fyh/(db*s)
+    # fple = ke*2*bar.area*fyh/(db*s)
     return fple
 
 
 class ReinforcementProperties:
     """Store a list of bar locations as points"""
-    def __init__(self, points, bar, mat_id):
-        # Standard Bar Properties #:( db (in) ,Ab (in^2) )
-        bars = {3: (0.375, 0.110), 4: (0.500, 0.200), 5: (0.625, 0.310),
-                6: (0.750, 0.440), 7: (0.875, 0.600), 8: (1.000, 0.790), 9: (1.128, 1.000),
-                10: (1.270, 1.270), 11: (1.410, 1.560), 14: (1.693, 2.250), 18: (2.257, 4.000)}
-        self.radius = bars[bar][0]/2
-        self.area = bars[bar][1]
+    def __init__(self, points, bar_num, mat_id):
+        bar = Standard().bar(bar_num)
+        self.radius = bar.db/2
+        self.area = bar.area
         self.points = points
         self.mat_id = mat_id
 

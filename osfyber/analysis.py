@@ -1,79 +1,6 @@
 import sys
 
 
-def secant_method(fct, _value, tol=10 ** -2, _iter=10 ** -10):
-    """
-    Minimize a given function to zero with the Secant method
-    I'm not sure how to find the derivative of a black box function,
-    And so we can't directly find the derivative, we must first find
-    The linear slope between two evaluation points
-    fct:    an actual python function with one input/output 
-        This is set up in advance to minimize to zero
-    start:    the first input
-    tol:    The tolerance by witch to quit when the function return
-        is < |fct ret|
-    iter:    How much to step by in each loop
-    """
-    # TODO remove secant and bisection method functions, use numpy
-    initial_val = _value
-    for step in range(10):
-        # Get current location within function
-        cur = fct(_value)
-        # We see if we have minimized the function to zero
-        if abs(cur) < tol:
-            return _value
-        _value += _iter
-        slope = (fct(_value) - cur) / _iter
-        # If slope == 0 -> Divergence
-        # We did not pick an initial value within the zone of influence
-        if slope == 0:
-            return bisection_method(fct, initial_val, tol)
-        _value -= cur / slope
-    # Secant method should be able to converge within 4 or so steps.
-    return bisection_method(fct, initial_val, tol)
-
-
-def bisection_method(fct, i_val, tol):
-    """
-    Sometimes, the secant/Newton Rhapshon method can diverge
-    This happens when the initial guess is not within the zone of influence
-    Bisection is guaranteed to always converge, since we start with two
-    sides of the function that return pos and neg values
-    """
-    # Find a scope - Function values on either side have opposite signs
-    scope = 5
-    while True:
-        # Check if we get +/- on either side of the scope
-        a = i_val - scope
-        b = i_val + scope
-        left = fct(a)
-        right = fct(b)
-        # check if opposite signs
-        if abs(left) / left != abs(right) / right:
-            break
-        scope *= 2
-        if scope > 10 ** 3:
-            print("Bisection Method Scope out of bounds\nExternally applied force may be larger than section capacity?")
-            sys.exit()
-    # Try 100 iterations
-    a_val = fct(a)
-    c_val = fct((a + b) / 2)
-    n_max = 100
-    for n in range(1, n_max):  # limit iterations to prevent infinite loop
-        c = (a + b) / 2  # new midpoint
-        if abs(c_val - a_val) / 2 <= tol:  # solution found
-            return c
-        a_val = fct(a)
-        c_val = fct(c)
-        # Check if midpoint and left are same sign
-        if c_val / abs(c_val) == a_val / abs(a_val):
-            a = c
-        else:
-            b = c  # new interval
-    print("Bisection Method Failed")
-    sys.exit()
-
-
 class State:
     """State information for a phi step"""
 
@@ -141,7 +68,6 @@ class FiberModel:
             strain = self.calc_strain(fiber.xy, y_intercept)
             stress = self.materials[fiber.mat_id].stress(strain)
             sum_force += fiber.area * stress
-        # print(f"{y_intercept}: {sum_F}")
         return sum_force + self.P
 
     def calc_moment(self):
