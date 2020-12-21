@@ -17,6 +17,7 @@ setup(
     install_requires=[
         'matplotlib',
         'numpy',
+        'scipy',
         'pybind11',
         'meshpy'
     ],

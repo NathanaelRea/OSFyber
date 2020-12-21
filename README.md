@@ -25,40 +25,41 @@ Or just download the zip from github and use pip install on the extracted folder
 ```python
 from osfyber.system import FyberModel
 
-### CREATE A MODEL
+# CREATE A MODEL
 model = FyberModel()
 
-### Set Materials
-model.add_material(id=1, type='concrete', fpc=5.2, ecp=-.002, ecu=-.005)
-fple = model.conf_pressure('circle', fyh=68, bar=4, D=31.5, s=3)
-model.add_material(id=2, type='concrete', fpc=5.2, fple=fple)
-model.add_material(id=3, type='steel', E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
+# Set Materials
+model.add_material(mat_num=1, mat='concrete', fpc=5.2, ecp=-.002, ecu=-.005)
+fple = FyberModel.conf_pressure('circle', fyh=68, bar=4, D=31.5, s=3)
+model.add_material(mat_num=2, mat='concrete', fpc=5.2, fple=fple)
 
-### Set Geometry
-model.add_geometry('circle', mat_id=1, c=(0,0), D=36)
+model.add_material(mat_num=3, mat='steel', E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
 
-### Set longitudinal reinforcmenet, and optinally confinement
-model.add_reinforcement('circle', mat_id=3, D=29.5, c=(0,0), bar=9, count=12, conf_id=2)
+# SET GEOMETRY
+model.add_geometry('circle', mat_id=1, c=(0, 0), D=36)
 
-## ADD LOADING (Positive is Compression)
+# SET LONGITUDINAL REINFORCEMENT (OPTIONAL CONFINEMENT)
+model.add_reinforcement('circle', mat_id=3, D=29.5, c=(0, 0), bar=9, count=12, conf_id=2)
+
+# ADD LOADING (Positive is Compression)
 model.set_load('Axial', P=1000)
 
-### GENERATE MESH
+# GENERATE MESH
 model.generate_mesh()
 
-### CHECK INPUT
+# CHECK INPUT
 model.display_materials()
-#model.display_mesh()
+# model.display_mesh()
 
-### ANALYZE MODEL
+# ANALYZE MODEL
 model.analyze()
 
-### SAVE RESULTS
-#model.export_results()
+# SAVE RESULTS
+# model.export_results()
 
-### DISPLAY MOMENT CURVATURE
+# DISPLAY MOMENT CURVATURE
 model.display_mc()
-#model.display_mc_2x2()
+# model.display_mc_2x2()
 ```
 
 Output from display_materials():
