@@ -308,7 +308,10 @@ class FyberModel:
             ax.add_patch(new_patch)
         for reinforce_group in self.reinforcement:
             for centroids in reinforce_group.points:
-                new_patch = CirclePolygon(centroids, reinforce_group.radius, 8, fc='White', ec='black', zorder=15)
+                new_patch = CirclePolygon(centroids, reinforce_group.radius)
+                new_patch.set_facecolor('White')
+                new_patch.set_edgecolor('Black')
+                new_patch.set_zorder(15)
                 patches.append(new_patch)
                 ax.add_patch(new_patch)
         # Plot nodal points of mesh (useful to auto set axes limits)
@@ -333,8 +336,12 @@ class FyberModel:
         if self.reinforcement:
             for reinforcement_group in self.reinforcement:
                 for centroid in reinforcement_group.points:
-                    new_patch = CirclePolygon(centroid, reinforcement_group.radius, 8, fc='White', ec='Black',
-                                              zorder=15, picker=.01, gid=str(i))
+                    new_patch = CirclePolygon(centroid, reinforcement_group.radius)
+                    new_patch.set_facecolor('White')
+                    new_patch.set_edgecolor('Black')
+                    new_patch.set_picker(.01)
+                    new_patch.set_gid(str(i))
+                    new_patch.set_zorder(15)
                     patches.append(new_patch)
                     ax.add_patch(new_patch)
                     i += 1
@@ -395,8 +402,12 @@ class FyberModel:
         if self.reinforcement:
             for reinforce_group in self.reinforcement:
                 for centroid in reinforce_group.points:
-                    new_patch = CirclePolygon(centroid, reinforce_group.radius, 8, fc='White', ec='black',
-                                              zorder=15, picker=.01, gid=str(i))
+                    new_patch = CirclePolygon(centroid, reinforce_group.radius)
+                    new_patch.set_facecolor('White')
+                    new_patch.set_edgecolor('Black')
+                    new_patch.set_picker(.01)
+                    new_patch.set_gid(str(i))
+                    new_patch.set_zorder(15)
                     patches.append(new_patch)
                     ax.add_patch(new_patch)
                     i += 1
@@ -467,8 +478,12 @@ class FyberModel:
         if self.reinforcement:
             for reinforce_group in self.reinforcement:
                 for centroid in reinforce_group.points:
-                    new_patch = CirclePolygon(centroid, reinforce_group.radius, 8, fc='White', ec='black',
-                                              zorder=15, picker=.01, gid=str(i))
+                    new_patch = CirclePolygon(centroid, reinforce_group.radius)
+                    new_patch.set_facecolor('White')
+                    new_patch.set_edgecolor('Black')
+                    new_patch.set_picker(.01)
+                    new_patch.set_gid(str(i))
+                    new_patch.set_zorder(15)
                     patches.append(new_patch)
                     ax.add_patch(new_patch)
                     i += 1
