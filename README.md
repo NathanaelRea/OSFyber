@@ -18,36 +18,59 @@ Open Source 'Fyber' Analysis Tool for Moment Curvature.
 ### Standard Confined Circular Column
 
 ```python
-from osfyber.system import FyberModel
+from osfyber.materials import (
+    ConfinedConcreteProps,
+    ConfinedPressureCircleProps,
+    SteelProps,
+    UnconfinedConcreteProps,
+    conf_pressure_circle,
+)
+from osfyber.system import (
+    CircleGeometryProps,
+    FyberModel,
+    LoadProps,
+    ReinforcementProps,
+)
 
 model = FyberModel()
 
-model.add_material(mat_num=1, mat='concrete', fpc=5.2, ecp=-.002, ecu=-.005)
-fple = FyberModel.conf_pressure('circle', fyh=68, bar=4, D=31.5, s=3)
-model.add_material(mat_num=2, mat='concrete', fpc=5.2, fple=fple)
-model.add_material(mat_num=3, mat='steel', E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
+# Set Materials
+unconfProps = UnconfinedConcreteProps(fpc=5.2, ecp=-0.002, ecu=-0.005)
+model.add_material_concrete(1, unconfProps)
+circlePressureProps = ConfinedPressureCircleProps(fyh=68, bar_number=4, D=31.5, s=3)
+fple = conf_pressure_circle(circlePressureProps)
+confProps = ConfinedConcreteProps(fpc=5.2, fple=fple)
+model.add_material_confined_concrete(2, confProps)
 
-model.add_geometry('circle', mat_id=1, c=(0, 0), D=36)
+steelProps = SteelProps(E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
+model.add_material_steel(3, steelProps)
 
-model.add_reinforcement('circle', mat_id=3, D=29.5, c=(0, 0), bar=9, count=12, conf_id=2)
+# set geometry
+circleProps = CircleGeometryProps(D=36, c=(0, 0))
+model.add_geometry_circle(1, circleProps)
 
-model.set_load('Axial', P=1000)
+# Set reinforcement
+reinfGeometry = CircleGeometryProps(D=29.5, c=(0, 0))
+reinfProps = ReinforcementProps(bar=9, count=12, conf_id=2)
+model.add_reinforcement_circle(3, reinfGeometry, reinfProps)
 
+# Add loading (positive is compression)
+load = LoadProps(P=1000)
+model.set_load(load)
+
+# Generate mesh
 model.generate_mesh()
 
-# Check input materials
+# Check input
 # model.display_materials()
-# Check mesh
 # model.display_mesh()
 
-# Run analysis and display results
 model.analyze()
-
-# Save results
-# model.export_results()
-
-# Display Moment Curvature
 model.display_mc()
+# model.display_mc_2x2()
+
+# save results
+# model.export_results()
 ```
 
 Output from display_materials():
