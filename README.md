@@ -35,24 +35,28 @@ from osfyber.system import (
 model = FyberModel()
 
 # Set Materials
-unconfProps = UnconfinedConcreteProps(fpc=5.2, ecp=-0.002, ecu=-0.005)
-model.add_material_concrete(1, unconfProps)
-circlePressureProps = ConfinedPressureCircleProps(fyh=68, bar_number=4, D=31.5, s=3)
-fple = conf_pressure_circle(circlePressureProps)
-confProps = ConfinedConcreteProps(fpc=5.2, fple=fple)
-model.add_material_confined_concrete(2, confProps)
-
-steelProps = SteelProps(E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
-model.add_material_steel(3, steelProps)
+unconfined_concrete = model.add_material_concrete(
+    UnconfinedConcreteProps(fpc=5.2, ecp=-0.002, ecu=-0.005)
+)
+fple = conf_pressure_circle(
+    ConfinedPressureCircleProps(fyh=68, bar_number=4, D=31.5, s=3)
+)
+confined_concrete = model.add_material_confined_concrete(
+    ConfinedConcreteProps(fpc=5.2, fple=fple)
+)
+steel = model.add_material_steel(
+    SteelProps(E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
+)
 
 # set geometry
-circleProps = CircleGeometryProps(D=36, c=(0, 0))
-model.add_geometry_circle(1, circleProps)
+model.add_geometry_circle(unconfined_concrete, CircleGeometryProps(D=36, c=(0, 0)))
 
 # Set reinforcement
-reinfGeometry = CircleGeometryProps(D=29.5, c=(0, 0))
-reinfProps = ReinforcementProps(bar=9, count=12, conf_id=2)
-model.add_reinforcement_circle(3, reinfGeometry, reinfProps)
+model.add_reinforcement_circle(
+    steel,
+    CircleGeometryProps(D=29.5, c=(0, 0)),
+    ReinforcementProps(bar=9, count=12, conf_id=2),
+)
 
 # Add loading (positive is compression)
 load = LoadProps(P=1000)

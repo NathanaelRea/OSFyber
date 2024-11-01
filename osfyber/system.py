@@ -88,6 +88,8 @@ class FyberModel:
     """
 
     def __init__(self, figsize: int = 6):
+        self.mat_idx = 0
+        self.mat_id_lookup: dict[Material, int] = {}
         # Material Properties
         self.materials: dict[int, Material] = {}
         # Mesh Properties
@@ -112,32 +114,38 @@ class FyberModel:
         # Plot settings
         self.figsize = figsize
 
-    def add_material_concrete(
-        self, mat_num: int, props: UnconfinedConcreteProps
+    def add_mat(self, m: Material) -> Material:
+        self.mat_idx += 1
+        self.materials[self.mat_idx] = m
+        self.mat_id_lookup[m] = self.mat_idx
+        return m
+
+    def add_material_concrete(self, props: UnconfinedConcreteProps) -> Material:
+        return self.add_mat(UnconfConcMat(props))
+
+    def add_material_confined_concrete(self, props: ConfinedConcreteProps) -> Material:
+        return self.add_mat(ConfConcMat(props))
+
+    def add_material_steel(self, props: SteelProps) -> Material:
+        return self.add_mat(SteelMat(props))
+
+    def add_material_user(self, props: UserMaterialProps) -> Material:
+        return self.add_mat(UserMat(props))
+
+    def add_geometry_circle(
+        self, material: Material, props: CircleGeometryProps
     ) -> None:
-        self.materials[mat_num] = UnconfConcMat(props)
-
-    def add_material_confined_concrete(
-        self, mat_num: int, props: ConfinedConcreteProps
-    ) -> None:
-        self.materials[mat_num] = ConfConcMat(props)
-
-    def add_material_steel(self, mat_num: int, props: SteelProps) -> None:
-        self.materials[mat_num] = SteelMat(props)
-
-    def add_material_user(self, mat_num: int, props: UserMaterialProps) -> None:
-        self.materials[mat_num] = UserMat(props)
-
-    def add_geometry_circle(self, mat_id: int, props: CircleGeometryProps) -> None:
         self.builder.add_geometry(*make_circle(props.D / 2, props.c))
-        self.ele_mat_primitive.append((props.D / 2, props.c, mat_id))
+        self.ele_mat_primitive.append(
+            (props.D / 2, props.c, self.mat_id_lookup[material])
+        )
         if not self.outer_facets:
             # list empty - first points
             self.outer_facets = self.builder.facets
         # self.mesh_points.extend(builder.points)
 
     def add_reinforcement_circle(
-        self, mat_id: int, props: CircleGeometryProps, props2: ReinforcementProps
+        self, material: Material, props: CircleGeometryProps, props2: ReinforcementProps
     ) -> None:
         """Add reinforcement in a circle (for now), confine concrete inside if needed"""
         if props2.conf_id:
@@ -146,7 +154,7 @@ class FyberModel:
                 *make_circle(props.D / 2, props.c, props2.count)
             )
             r = ReinforcementProperties(
-                reinforcement_builder.points, props2.bar, mat_id
+                reinforcement_builder.points, props2.bar, self.mat_id_lookup[material]
             )
             self.reinforcement.append(r)
             # Add points for confinement into mesh
@@ -158,7 +166,7 @@ class FyberModel:
                 *make_circle(props.D / 2, props.c, props2.count)
             )
             r = ReinforcementProperties(
-                reinforcement_builder.points, props2.bar, mat_id
+                reinforcement_builder.points, props2.bar, self.mat_id_lookup[material]
             )
             self.reinforcement.append(r)
 
