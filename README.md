@@ -11,7 +11,7 @@ Open Source 'Fyber' Analysis Tool for Moment Curvature.
 - Initialize Poetry project
   - `poetry init`
 - Add directly from repo url
-  `poetry add git+https://github.com/NathanaelRea/OSFyber`
+  - `poetry add git+https://github.com/NathanaelRea/OSFyber`
 
 ## Examples
 
@@ -77,14 +77,6 @@ model.display_mc()
 # model.export_results()
 ```
 
-Output from display_materials():
-
-![Example 1 Material Unconfined Concrete](Pics/Example_1_Mat_1.png)
-
-![Example 1 Material Confined Concrete](Pics/Example_1_Mat_2.png)
-
-![Example 1 Material Steel](Pics/Example_1_Mat_3.png)
-
 Output from analyze():
 
 ```text
@@ -101,3 +93,7 @@ Fully Interactive Moment Curvature Diagram. Ability to step through process of d
 Output from display_mc():
 
 ![Example 1 Disp Mc](Pics/Example_1_Disp_MC.png)
+
+You can click on the mesh to view stress strain plot at that step:
+
+![Example click on mesh](Pics/Example_click.png)
