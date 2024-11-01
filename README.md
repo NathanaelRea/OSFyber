@@ -48,19 +48,16 @@ steel = model.add_material_steel(
     SteelProps(E=29565, fy=68, fsu=95, e_sh=0.0125, e_su=0.09, P=2.8)
 )
 
-# set geometry
+# Set geometry
 model.add_geometry_circle(unconfined_concrete, CircleGeometryProps(D=36, c=(0, 0)))
-
-# Set reinforcement
 model.add_reinforcement_circle(
     steel,
     CircleGeometryProps(D=29.5, c=(0, 0)),
-    ReinforcementProps(bar=9, count=12, conf_id=2),
+    ReinforcementProps(bar=9, count=12, conf_material=confined_concrete),
 )
 
 # Add loading (positive is compression)
-load = LoadProps(P=1000)
-model.set_load(load)
+model.set_load(LoadProps(P=1000))
 
 # Generate mesh
 model.generate_mesh()
