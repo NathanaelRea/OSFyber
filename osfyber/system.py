@@ -101,7 +101,9 @@ class FyberModel:
         self.mesh: MeshInfo = None
         # Data structure to assign material ids after mesh generation
         self.ele_mat_primitive: list[tuple[float, tuple[float, float], int]] = []
-        self.ele_mat: dict[int, int] = {}
+        self.patch_id_to_material: dict[int, int] = {}
+        # workaround b/c patch_id_to_material is overloaded
+        self.reinf_id_to_material: dict[int, int] = {}
         # Load step Data
         self.phi_list: list[float] = []
         self.M_list: list[float] = []
@@ -218,7 +220,14 @@ class FyberModel:
             mat_id = primitive[2]
             for n, c in self.mesh_centroids.items():
                 if hypot(c[0] - prim_c[0], c[1] - prim_c[1]) < r:
-                    self.ele_mat[n] = mat_id
+                    self.patch_id_to_material[n] = mat_id
+        # this is really hacky and I hate it
+        i = 1
+        offset = max(self.mesh_centroids.keys())
+        for reinforcement_group in self.reinforcement:
+            for centroid in reinforcement_group.points:
+                self.reinf_id_to_material[i + offset] = reinforcement_group.mat_id
+                i += 1
 
     def gen_fiber_model(self) -> None:
         # We can re-mesh our geometry, but our reinforcement is just points
@@ -228,19 +237,21 @@ class FyberModel:
         for n in self.mesh_centroids.keys():
             centroid = self.mesh_centroids[n]
             area = self.mesh_areas[n]
-            self.analysis_model.fibers[n] = Fiber(area, centroid, self.ele_mat[n])
+            self.analysis_model.fibers[n] = Fiber(
+                area, centroid, self.patch_id_to_material[n]
+            )
             max_y = max(max_y, centroid[1])
             min_y = min(min_y, centroid[1])
         self.analysis_model.max_y = max_y
         self.analysis_model.min_y = min_y
-        meh = max(self.mesh_centroids.keys())
+        polygon_patch_offset = max(self.mesh_centroids.keys())
         n = 1
         for reinforce_group in self.reinforcement:
             for centroid in reinforce_group.points:
                 # TODO - SHOULD I HAVE PATCHES REGARDLESS OF MAT/reinforcement?
                 # MIGHT BE PROBLEM IF NEED VALUES FROM A SINGLE BAR
                 # MAYBE SET MAX VOLUME SEPARATELY?
-                self.analysis_model.fibers[n + meh] = Fiber(
+                self.analysis_model.fibers[n + polygon_patch_offset] = Fiber(
                     reinforce_group.area, centroid, reinforce_group.mat_id
                 )
                 n += 1
@@ -286,6 +297,13 @@ class FyberModel:
             # if M < 1:
             #   print("Capacity of entire section failed")
             #   break
+
+    def mat_id_from_patch_id(self, patch_id: int) -> Optional[int]:
+        if patch_id in self.patch_id_to_material:
+            return self.patch_id_to_material[patch_id]
+        if patch_id in self.reinf_id_to_material:
+            return self.reinf_id_to_material[patch_id]
+        return None
 
     def display_material(
         self, mat_id: int, loc: Optional[tuple[float, float]] = None
@@ -519,7 +537,10 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_material(self.ele_mat[patch_id], (strain, stress))
+            mat_id = self.mat_id_from_patch_id(patch_id)
+            if not mat_id:
+                return False
+            self.display_material(mat_id, (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
@@ -614,7 +635,10 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_material(self.ele_mat[patch_id], (strain, stress))
+            mat_id = self.mat_id_from_patch_id(patch_id)
+            if not mat_id:
+                return False
+            self.display_material(mat_id, (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
