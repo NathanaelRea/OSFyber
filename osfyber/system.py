@@ -284,7 +284,7 @@ class FyberModel:
     ) -> None:
         # Plot a specific material with tag mat_id
         material = self.materials[mat_id]
-        tmp_strains = material.useful_points
+        tmp_strains = list(material.useful_points)
         useful_strains = []
         for point in tmp_strains:
             useful_strains.append(point - 1e-6)
@@ -294,11 +294,11 @@ class FyberModel:
             material.useful_points[0], material.useful_points[-1], 30
         )
         strains = np.sort(np.r_[lin_strains, useful_strains[1:-1]])
-        stresses = np.array([material.stress(strain) for strain in strains])
-        colors = np.array([self.color_from_state(material.state) for _ in strains])
-        stresses = np.array(stresses)
+        out = [material.stress_state(strain) for strain in strains]
+        stresses = np.array([s for s, _ in out])
+        colors = [c.name for _, c in out]
         stresses[stresses == 0] = np.nan
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         # Setup Plot - Discrete between colors
         i = 0
         x = []
@@ -325,17 +325,11 @@ class FyberModel:
         ax.set_xlabel("Strain (in/in)")
         ax.set_ylabel("Stress (ksi)")
         ax.grid()
+        plt.show()
 
-    def display_materials(
-        self, mat_id: Optional[int] = None, loc: Optional[tuple[float, float]] = None
-    ) -> None:
-        """Plot all loaded materials to verify stress strain curves"""
-        if mat_id is None:
-            # Plot standard -> all material plots
-            for mat_id, material in self.materials.items():
-                self.display_material(mat_id, loc)
-        else:
-            self.display_material(mat_id, loc)
+    def display_materials(self) -> None:
+        for mat_id in self.materials.keys():
+            self.display_material(mat_id)
         plt.show()
 
     def display_mesh(self) -> None:
@@ -517,7 +511,7 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_materials(self.ele_mat[patch_id], (strain, stress))
+            self.display_material(self.ele_mat[patch_id], (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
@@ -612,7 +606,7 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_materials(self.ele_mat[patch_id], (strain, stress))
+            self.display_material(self.ele_mat[patch_id], (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
