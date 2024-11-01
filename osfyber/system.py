@@ -57,7 +57,7 @@ class CircleGeometryProps:
 class ReinforcementProps:
     bar: int
     count: int
-    conf_id: Optional[int] = None
+    conf_material: Optional[Material] = None
 
 
 # @dataclass
@@ -150,7 +150,7 @@ class FyberModel:
         self, material: Material, props: CircleGeometryProps, props2: ReinforcementProps
     ) -> None:
         """Add reinforcement in a circle (for now), confine concrete inside if needed"""
-        if props2.conf_id:
+        if props2.conf_material:
             reinforcement_builder = GeometryBuilder()
             reinforcement_builder.add_geometry(
                 *make_circle(props.D / 2, props.c, props2.count)
@@ -161,7 +161,9 @@ class FyberModel:
             self.reinforcement.append(r)
             # Add points for confinement into mesh
             self.builder.add_geometry(*make_circle(props.D / 2, props.c))
-            self.ele_mat_primitive.append((props.D / 2, props.c, props2.conf_id))
+            self.ele_mat_primitive.append(
+                (props.D / 2, props.c, self.mat_id_lookup[props2.conf_material])
+            )
         else:
             reinforcement_builder = GeometryBuilder()
             reinforcement_builder.add_geometry(
