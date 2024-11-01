@@ -40,6 +40,10 @@ class Material(ABC):
     def stress(self, ec: float) -> float:
         pass
 
+    def stress_state(self, ec: float) -> tuple[float, Color]:
+        stress = self.stress(ec)
+        return (stress, self.state)
+
     @abstractmethod
     def tension(self) -> float:
         pass

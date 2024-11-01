@@ -88,6 +88,8 @@ class FyberModel:
     """
 
     def __init__(self, figsize: int = 6):
+        self.mat_idx = 0
+        self.mat_id_lookup: dict[Material, int] = {}
         # Material Properties
         self.materials: dict[int, Material] = {}
         # Mesh Properties
@@ -99,7 +101,9 @@ class FyberModel:
         self.mesh: MeshInfo = None
         # Data structure to assign material ids after mesh generation
         self.ele_mat_primitive: list[tuple[float, tuple[float, float], int]] = []
-        self.ele_mat: dict[int, int] = {}
+        self.patch_id_to_material: dict[int, int] = {}
+        # workaround b/c patch_id_to_material is overloaded
+        self.reinf_id_to_material: dict[int, int] = {}
         # Load step Data
         self.phi_list: list[float] = []
         self.M_list: list[float] = []
@@ -112,32 +116,38 @@ class FyberModel:
         # Plot settings
         self.figsize = figsize
 
-    def add_material_concrete(
-        self, mat_num: int, props: UnconfinedConcreteProps
+    def add_mat(self, m: Material) -> Material:
+        self.mat_idx += 1
+        self.materials[self.mat_idx] = m
+        self.mat_id_lookup[m] = self.mat_idx
+        return m
+
+    def add_material_concrete(self, props: UnconfinedConcreteProps) -> Material:
+        return self.add_mat(UnconfConcMat(props))
+
+    def add_material_confined_concrete(self, props: ConfinedConcreteProps) -> Material:
+        return self.add_mat(ConfConcMat(props))
+
+    def add_material_steel(self, props: SteelProps) -> Material:
+        return self.add_mat(SteelMat(props))
+
+    def add_material_user(self, props: UserMaterialProps) -> Material:
+        return self.add_mat(UserMat(props))
+
+    def add_geometry_circle(
+        self, material: Material, props: CircleGeometryProps
     ) -> None:
-        self.materials[mat_num] = UnconfConcMat(props)
-
-    def add_material_confined_concrete(
-        self, mat_num: int, props: ConfinedConcreteProps
-    ) -> None:
-        self.materials[mat_num] = ConfConcMat(props)
-
-    def add_material_steel(self, mat_num: int, props: SteelProps) -> None:
-        self.materials[mat_num] = SteelMat(props)
-
-    def add_material_user(self, mat_num: int, props: UserMaterialProps) -> None:
-        self.materials[mat_num] = UserMat(props)
-
-    def add_geometry_circle(self, mat_id: int, props: CircleGeometryProps) -> None:
         self.builder.add_geometry(*make_circle(props.D / 2, props.c))
-        self.ele_mat_primitive.append((props.D / 2, props.c, mat_id))
+        self.ele_mat_primitive.append(
+            (props.D / 2, props.c, self.mat_id_lookup[material])
+        )
         if not self.outer_facets:
             # list empty - first points
             self.outer_facets = self.builder.facets
         # self.mesh_points.extend(builder.points)
 
     def add_reinforcement_circle(
-        self, mat_id: int, props: CircleGeometryProps, props2: ReinforcementProps
+        self, material: Material, props: CircleGeometryProps, props2: ReinforcementProps
     ) -> None:
         """Add reinforcement in a circle (for now), confine concrete inside if needed"""
         if props2.conf_id:
@@ -146,7 +156,7 @@ class FyberModel:
                 *make_circle(props.D / 2, props.c, props2.count)
             )
             r = ReinforcementProperties(
-                reinforcement_builder.points, props2.bar, mat_id
+                reinforcement_builder.points, props2.bar, self.mat_id_lookup[material]
             )
             self.reinforcement.append(r)
             # Add points for confinement into mesh
@@ -158,7 +168,7 @@ class FyberModel:
                 *make_circle(props.D / 2, props.c, props2.count)
             )
             r = ReinforcementProperties(
-                reinforcement_builder.points, props2.bar, mat_id
+                reinforcement_builder.points, props2.bar, self.mat_id_lookup[material]
             )
             self.reinforcement.append(r)
 
@@ -210,7 +220,14 @@ class FyberModel:
             mat_id = primitive[2]
             for n, c in self.mesh_centroids.items():
                 if hypot(c[0] - prim_c[0], c[1] - prim_c[1]) < r:
-                    self.ele_mat[n] = mat_id
+                    self.patch_id_to_material[n] = mat_id
+        # this is really hacky and I hate it
+        i = 1
+        offset = max(self.mesh_centroids.keys())
+        for reinforcement_group in self.reinforcement:
+            for centroid in reinforcement_group.points:
+                self.reinf_id_to_material[i + offset] = reinforcement_group.mat_id
+                i += 1
 
     def gen_fiber_model(self) -> None:
         # We can re-mesh our geometry, but our reinforcement is just points
@@ -220,19 +237,21 @@ class FyberModel:
         for n in self.mesh_centroids.keys():
             centroid = self.mesh_centroids[n]
             area = self.mesh_areas[n]
-            self.analysis_model.fibers[n] = Fiber(area, centroid, self.ele_mat[n])
+            self.analysis_model.fibers[n] = Fiber(
+                area, centroid, self.patch_id_to_material[n]
+            )
             max_y = max(max_y, centroid[1])
             min_y = min(min_y, centroid[1])
         self.analysis_model.max_y = max_y
         self.analysis_model.min_y = min_y
-        meh = max(self.mesh_centroids.keys())
+        polygon_patch_offset = max(self.mesh_centroids.keys())
         n = 1
         for reinforce_group in self.reinforcement:
             for centroid in reinforce_group.points:
                 # TODO - SHOULD I HAVE PATCHES REGARDLESS OF MAT/reinforcement?
                 # MIGHT BE PROBLEM IF NEED VALUES FROM A SINGLE BAR
                 # MAYBE SET MAX VOLUME SEPARATELY?
-                self.analysis_model.fibers[n + meh] = Fiber(
+                self.analysis_model.fibers[n + polygon_patch_offset] = Fiber(
                     reinforce_group.area, centroid, reinforce_group.mat_id
                 )
                 n += 1
@@ -279,12 +298,19 @@ class FyberModel:
             #   print("Capacity of entire section failed")
             #   break
 
+    def mat_id_from_patch_id(self, patch_id: int) -> Optional[int]:
+        if patch_id in self.patch_id_to_material:
+            return self.patch_id_to_material[patch_id]
+        if patch_id in self.reinf_id_to_material:
+            return self.reinf_id_to_material[patch_id]
+        return None
+
     def display_material(
         self, mat_id: int, loc: Optional[tuple[float, float]] = None
     ) -> None:
         # Plot a specific material with tag mat_id
         material = self.materials[mat_id]
-        tmp_strains = material.useful_points
+        tmp_strains = list(material.useful_points)
         useful_strains = []
         for point in tmp_strains:
             useful_strains.append(point - 1e-6)
@@ -294,11 +320,11 @@ class FyberModel:
             material.useful_points[0], material.useful_points[-1], 30
         )
         strains = np.sort(np.r_[lin_strains, useful_strains[1:-1]])
-        stresses = np.array([material.stress(strain) for strain in strains])
-        colors = np.array([self.color_from_state(material.state) for _ in strains])
-        stresses = np.array(stresses)
+        out = [material.stress_state(strain) for strain in strains]
+        stresses = np.array([s for s, _ in out])
+        colors = [c.name for _, c in out]
         stresses[stresses == 0] = np.nan
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         # Setup Plot - Discrete between colors
         i = 0
         x = []
@@ -325,17 +351,11 @@ class FyberModel:
         ax.set_xlabel("Strain (in/in)")
         ax.set_ylabel("Stress (ksi)")
         ax.grid()
+        plt.show()
 
-    def display_materials(
-        self, mat_id: Optional[int] = None, loc: Optional[tuple[float, float]] = None
-    ) -> None:
-        """Plot all loaded materials to verify stress strain curves"""
-        if mat_id is None:
-            # Plot standard -> all material plots
-            for mat_id, material in self.materials.items():
-                self.display_material(mat_id, loc)
-        else:
-            self.display_material(mat_id, loc)
+    def display_materials(self) -> None:
+        for mat_id in self.materials.keys():
+            self.display_material(mat_id)
         plt.show()
 
     def display_mesh(self) -> None:
@@ -517,7 +537,10 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_materials(self.ele_mat[patch_id], (strain, stress))
+            mat_id = self.mat_id_from_patch_id(patch_id)
+            if not mat_id:
+                return False
+            self.display_material(mat_id, (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
@@ -612,7 +635,10 @@ class FyberModel:
             patch_id = int(gid if gid else 0)
             strain = self.states[self.state_id].strains[patch_id]
             stress = self.states[self.state_id].stresses[patch_id]
-            self.display_materials(self.ele_mat[patch_id], (strain, stress))
+            mat_id = self.mat_id_from_patch_id(patch_id)
+            if not mat_id:
+                return False
+            self.display_material(mat_id, (strain, stress))
             return True
 
         fig.canvas.mpl_connect("pick_event", onclick)
