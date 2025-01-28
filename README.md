@@ -6,12 +6,8 @@ Open Source 'Fyber' Analysis Tool for Moment Curvature.
 
 ## Installation
 
-- Ensure you have MS build tools for MeshPy
-  - <https://visualstudio.microsoft.com/visual-cpp-build-tools>
-- Initialize Poetry project
-  - `poetry init`
-- Add directly from repo url
-  - `poetry add git+https://github.com/NathanaelRea/OSFyber`
+- uv init
+- uv add git+<https://github.com/NathanaelRea/OSFyber>
 
 ## Examples
 
