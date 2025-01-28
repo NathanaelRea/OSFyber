@@ -1,4 +1,3 @@
-
 from osfyber.materials import Color, Material
 
 
