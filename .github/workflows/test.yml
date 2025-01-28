@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v3
-      - run: ruff check
-      - run: ruff format
-
+      - uses: astral-sh/setup-uv@v5
+      - run: uvx ruff check
+      - run: uvx ruff format
+      - run: uv run pytest
