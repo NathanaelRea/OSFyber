@@ -1,11 +1,12 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from math import sqrt
-from typing import Optional
-import numpy as np
 from sys import exit
+
+import numpy as np
+
 from .standardsizes import Standard
-from abc import ABC, abstractmethod
 
 """
 MATERIALS
@@ -122,9 +123,9 @@ class ReinforcementProperties:
 @dataclass
 class UnconfinedConcreteProps:
     fpc: float
-    Ec: Optional[float] = None
-    ecp: Optional[float] = None
-    ecu: Optional[float] = None
+    Ec: float | None = None
+    ecp: float | None = None
+    ecu: float | None = None
     use_tension: bool = False
 
 
@@ -212,8 +213,8 @@ class UnconfConcMat(Material):
 class ConfinedConcreteProps:
     fpc: float
     fple: float
-    Ec: Optional[float] = None
-    epcc: Optional[float] = None
+    Ec: float | None = None
+    epcc: float | None = None
     use_tension: bool = False
 
 
@@ -299,8 +300,8 @@ class ConfConcMat(Material):
                 self.state = Color.Black
                 self.fail = (
                     f"Confined Concrete Crushing\n"
-                    f"\tMax Available Strain={round(self.ecu,5)}\n"
-                    f"\tStrain Experienced={round(ec,5)}"
+                    f"\tMax Available Strain={round(self.ecu, 5)}\n"
+                    f"\tStrain Experienced={round(ec, 5)}"
                 )
                 return 0
 
@@ -372,8 +373,8 @@ class SteelMat(Material):
                 self.state = Color.Black
                 self.fail = (
                     f"Steel Fracture\n"
-                    f"\tMax Available Strain={abs(round(self.e_su,5))}\n"
-                    f"\tStrain Experienced={abs(round(e,5))}"
+                    f"\tMax Available Strain={abs(round(self.e_su, 5))}\n"
+                    f"\tStrain Experienced={abs(round(e, 5))}"
                 )
                 return 0
         else:
@@ -399,8 +400,8 @@ class SteelMat(Material):
                 self.state = Color.Black
                 self.fail = (
                     f"Steel Fracture\n"
-                    f"\tMax Available Strain={abs(round(self.e_su,5))}\n"
-                    f"\tStrain Experienced={abs(round(e,5))}"
+                    f"\tMax Available Strain={abs(round(self.e_su, 5))}\n"
+                    f"\tStrain Experienced={abs(round(e, 5))}"
                 )
                 return 0
 
@@ -459,8 +460,8 @@ class UserMat(Material):
                 # stop analysis if user material is mirrored
                 self.fail = (
                     f"User Material Strain Limit\n"
-                    f"\tMax Available Strain={abs(round(self.strains[0],5))}\n"
-                    f"\tStrain Experienced={abs(round(e,5))}"
+                    f"\tMax Available Strain={abs(round(self.strains[0], 5))}\n"
+                    f"\tStrain Experienced={abs(round(e, 5))}"
                 )
             self.state = Color.Black
             return 0

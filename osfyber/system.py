@@ -1,8 +1,16 @@
 from dataclasses import dataclass
-from typing import Any, Optional
+from math import hypot
 
+import matplotlib.animation as anim
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.backend_bases import Event, PickEvent
-from matplotlib.figure import Figure
+from matplotlib.patches import CirclePolygon, Ellipse, Patch
+from matplotlib.widgets import Slider
+from meshpy.geometry import GeometryBuilder, make_circle
+from meshpy.triangle import MeshInfo, build
+from scipy.optimize import newton
+
 from osfyber.analysis import Fiber, FiberModel, State
 from osfyber.materials import (
     Color,
@@ -16,35 +24,7 @@ from osfyber.materials import (
     UnconfinedConcreteProps,
     UserMat,
     UserMaterialProps,
-    conf_pressure_circle,
-    conf_pressure_rect,
 )
-
-
-# Math
-import numpy as np
-from math import hypot
-from scipy.optimize import newton
-
-# Meshing
-from meshpy.geometry import GeometryBuilder, make_circle
-
-# TODO from meshpy.geometry import make_box
-from meshpy.triangle import MeshInfo, build
-
-# Plotting
-import matplotlib.pyplot as plt
-from matplotlib.patches import CirclePolygon, Ellipse, Patch, RegularPolygon
-from matplotlib.widgets import Slider
-
-# import matplotlib.lines as mlines
-# from matplotlib.path import Path
-# Gif Export of display_mc
-import matplotlib.animation as anim
-
-# Ignore display_mc_2x2() tight layout warning
-# import warnings
-from sys import exit
 
 
 @dataclass
@@ -57,7 +37,7 @@ class CircleGeometryProps:
 class ReinforcementProps:
     bar: int
     count: int
-    conf_material: Optional[Material] = None
+    conf_material: Material | None = None
 
 
 # @dataclass
@@ -70,7 +50,7 @@ class ReinforcementProps:
 
 @dataclass
 class LoadProps:
-    P: Optional[float] = None
+    P: float | None = None
 
 
 """
@@ -300,7 +280,7 @@ class FyberModel:
             #   print("Capacity of entire section failed")
             #   break
 
-    def mat_id_from_patch_id(self, patch_id: int) -> Optional[int]:
+    def mat_id_from_patch_id(self, patch_id: int) -> int | None:
         if patch_id in self.patch_id_to_material:
             return self.patch_id_to_material[patch_id]
         if patch_id in self.reinf_id_to_material:
@@ -308,7 +288,7 @@ class FyberModel:
         return None
 
     def display_material(
-        self, mat_id: int, loc: Optional[tuple[float, float]] = None
+        self, mat_id: int, loc: tuple[float, float] | None = None
     ) -> None:
         # Plot a specific material with tag mat_id
         material = self.materials[mat_id]
@@ -349,7 +329,7 @@ class FyberModel:
         if loc is not None:
             # Plot some location
             ax.plot(loc[0], loc[1], "ro")
-        ax.set_title("Material Stress Strain id={}".format(mat_id))
+        ax.set_title(f"Material Stress Strain id={mat_id}")
         ax.set_xlabel("Strain (in/in)")
         ax.set_ylabel("Stress (ksi)")
         ax.grid()
@@ -378,7 +358,7 @@ class FyberModel:
                 patches.append(new_patch)
                 ax.add_patch(new_patch)
         # Plot nodal points of mesh (useful to auto set axes limits)
-        x, y = zip(*self.mesh.points)
+        x, y = zip(*self.mesh.points, strict=False)
         ax.scatter(x, y, c="black", s=4, zorder=5)
         plt.show()
 
@@ -416,7 +396,7 @@ class FyberModel:
                     ax.add_patch(new_patch)
                     i += 1
         # Plot nodal points of mesh (useful to auto set axes limits)
-        ax.scatter(*zip(*self.mesh.points), c="black", s=4, zorder=5)
+        ax.scatter(*zip(*self.mesh.points, strict=False), c="black", s=4, zorder=5)
         num_steps = len(self.states) - 1
         # LEFT MC Plot
         ax_mc.plot(self.phi_list, self.M_list, "k")
@@ -441,7 +421,7 @@ class FyberModel:
                 self.color_from_state(state)
                 for state in self.states[state_id].mat_state
             ]
-            for patch, color in zip(patches, state_colors):
+            for patch, color in zip(patches, state_colors, strict=False):
                 patch.set_facecolor(color)
             point.center = (self.phi_list[state_id], self.M_list[state_id])
             # fig.canvas.draw_idle()
@@ -495,7 +475,7 @@ class FyberModel:
                     ax.add_patch(new_patch)
                     i += 1
         # Plot nodal points of mesh (useful to auto set axes limits)
-        ax.scatter(*zip(*self.mesh.points), c="black", s=4, zorder=5)
+        ax.scatter(*zip(*self.mesh.points, strict=False), c="black", s=4, zorder=5)
         num_steps = len(self.states) - 1
         # LEFT MC Plot
         ax_mc.plot(self.phi_list, self.M_list, "k")
@@ -520,7 +500,7 @@ class FyberModel:
                 self.color_from_state(state)
                 for state in self.states[phi_step].mat_state
             ]
-            for patch, color in zip(patches, state_colors):
+            for patch, color in zip(patches, state_colors, strict=False):
                 patch.set_facecolor(color)
             point.center = (self.phi_list[phi_step], self.M_list[phi_step])
             fig.canvas.draw_idle()
@@ -533,7 +513,7 @@ class FyberModel:
 
         # Setup mesh onclick event to view stress/strain location of each fiber
         def onclick(event: Event) -> bool:
-            if type(event) != PickEvent:
+            if not isinstance(event, PickEvent):
                 return False
             gid = event.artist.get_gid()
             patch_id = int(gid if gid else 0)
@@ -585,7 +565,7 @@ class FyberModel:
                     ax.add_patch(new_patch)
                     i += 1
         # Plot nodal points of mesh (useful to auto set axes limits)
-        ax.scatter(*zip(*self.mesh.points), c="black", s=4, zorder=5)
+        ax.scatter(*zip(*self.mesh.points, strict=False), c="black", s=4, zorder=5)
         num_steps = len(self.states) - 1
         # LEFT MC Plot
         ax_mc.plot(self.phi_list, self.M_list, "k")
@@ -609,7 +589,7 @@ class FyberModel:
             self.state_id = int(phi_step)
             # Update Patch  colors
             state_colors = [state.name for state in self.states[phi_step].mat_state]
-            for patch, color in zip(patches, state_colors):
+            for patch, color in zip(patches, state_colors, strict=False):
                 patch.set_facecolor(color)
             point.center = (self.phi_list[phi_step], self.M_list[phi_step])
 
@@ -631,7 +611,7 @@ class FyberModel:
 
         # Setup mesh onclick event to view stress/strain location of each fiber
         def onclick(event: Event) -> bool:
-            if type(event) != PickEvent:
+            if not isinstance(event, PickEvent):
                 return False
             gid = event.artist.get_gid()
             patch_id = int(gid if gid else 0)
@@ -688,7 +668,7 @@ class FyberModel:
 
     def export_results(self, filename: str = "") -> None:
         out = ["phi,M"]
-        for phi, M in zip(self.phi_list, self.M_list):
+        for phi, M in zip(self.phi_list, self.M_list, strict=False):
             out.append(f"{phi},{M}")
         if filename == "":
             print("\n".join(out))

@@ -1,4 +1,3 @@
-from typing import Optional
 from osfyber.materials import Color, Material
 
 
@@ -52,7 +51,7 @@ class FiberModel:
         self.max_y = 0.0
         self.min_y = 0.0
         # State Object, used for max/min strains of this particular fiber
-        self.state: Optional[State] = None
+        self.state: State | None = None
 
     def calc_strain(self, cords: tuple[float, float], y_intercept: float) -> float:
         # TODO - ADD CURVATURE ANGLE from +y
