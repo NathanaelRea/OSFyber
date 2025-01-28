@@ -10,4 +10,5 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uvx ruff check
       - run: uvx ruff format
+      - run: uv sync
       - run: uv pytest
