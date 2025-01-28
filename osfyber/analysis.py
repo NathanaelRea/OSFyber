@@ -66,7 +66,7 @@ class FiberModel:
         """
         self.zero_strain_location = y_intercept
         sum_force = 0.0
-        for i, fiber in self.fibers.items():
+        for fiber in self.fibers.values():
             strain = self.calc_strain(fiber.xy, y_intercept)
             stress = self.materials[fiber.mat_id].stress(strain)
             sum_force += fiber.area * stress
@@ -78,10 +78,11 @@ class FiberModel:
         # TODO: Change this to save state. (Or have another fct that calls this fct)
         # M is just one property of this solved curvature level
 
-        # Go through all elements (mesh/reinforcement) and calculate strain from linear centroid, then stress
-        # TODO - Find some transformation value c1*x+c2*y -> distance from strain reversal/centroid
-        # BUT ONLY CALCULATE THAT ONCE>>>> THEN JUST CALCULATE THE Sin(theta) OR WHATEVER TO FIND THE STEP
-        # WE DO NOT NEED TO RECALCULATE THIS EVERY TIME
+        # Go through all elements (mesh/reinforcement) and calculate strain from linear
+        # centroid, then stress
+        # Find some transformation value c1*x+c2*y -> dist from strain reversal/centroid
+        # BUT ONLY CALCULATE THAT ONCE>>>> THEN JUST CALCULATE THE Sin(theta)
+        # OR WHATEVER TO FIND THE STEP. WE DO NOT NEED TO RECALCULATE THIS EVERY TIME
         # BECAUSE WE HAVE A KNOWN STEP SIZE, AND MOMENT ROTATION DOES NOT CHANGE
 
         # Calculate strain at furthest fibers

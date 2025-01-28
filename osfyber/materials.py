@@ -10,11 +10,15 @@ from .standardsizes import Standard
 
 """
 MATERIALS
-Unconfined Concrete     Create a material from Mander-Unconfined model given standard material properties.
-Confined Concrete       Create a material from Mander-Confined model, given confinement pressure.
-                            can be calculated with osfyber.conf_pressure()
-Steel                   Create a material from E, Esh, ey, and other common steel properties
-User Defined            Create an arbitrary material given several points of (strain,stress)
+Unconfined Concrete
+- Create a material from Mander-Unconfined model given standard material properties.
+Confined Concrete
+- Create a material from Mander-Confined model, given confinement pressure.
+- Can be calculated with osfyber.conf_pressure()
+Steel
+- Create a material from E, Esh, ey, and other common steel properties
+User Defined
+- Create an arbitrary material given several points of (strain,stress)
 """
 
 
@@ -238,7 +242,10 @@ class ConfConcMat(Material):
         # Confined properties
         # k1 = 5.4/sqrt(1+5*(self.fple/self.fpc))
         # self.fpcc = -self.fpc*(1+k1*(self.fple/self.fpc))
-        # self.fpcc = -self.fpc*ratio * (2.254*sqrt(1 + (7.94*self.fple)/self.fpc)-(2*self.fple / self.fpc) - 1.254)
+
+        # idk = 1 + (7.94*self.fple)/self.fpc
+        # idk2 = (2.254*sqrt(idk)-(2*self.fple / self.fpc) - 1.254)
+        # self.fpcc = -self.fpc*ratio * idk2
         self.fpcc = -6.899
 
         # TODO HARDCODED ASSUME 0.002????
@@ -434,10 +441,9 @@ class UserMat(Material):
         if props.mirror:
             # TODO: user input for failure levels (min/max/both)
             # copy points over line y=-x
+            e = "You can't mirror a user material if there are negative strain values!"
             if min(self.strains) < 0:
-                print(
-                    "You can't mirror a user material if there are negative strain values"
-                )
+                print(e)
                 exit()
             # if there's a point of 0 strain, don't copy it
             # or maybe there's a np function to remove duplicates?
