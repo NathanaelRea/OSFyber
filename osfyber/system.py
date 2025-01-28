@@ -54,8 +54,9 @@ class LoadProps:
 
 
 """
-TODO better analysis - find better step size based on size?
-TODO better analysis - find maximum tension/compression and throw error if static force too high
+TODO better analysis
+- find better step size based on size?
+- find maximum tension/compression and throw error if static force too high
 """
 
 
@@ -207,7 +208,7 @@ class FyberModel:
         i = 1
         offset = max(self.mesh_centroids.keys())
         for reinforcement_group in self.reinforcement:
-            for centroid in reinforcement_group.points:
+            for _ in reinforcement_group.points:
                 self.reinf_id_to_material[i + offset] = reinforcement_group.mat_id
                 i += 1
 
@@ -216,7 +217,7 @@ class FyberModel:
         # So when we add the reinforcement we should also make holes in mesh (TODO)
         max_y = 0.0
         min_y = 0.0
-        for n in self.mesh_centroids.keys():
+        for n in self.mesh_centroids:
             centroid = self.mesh_centroids[n]
             area = self.mesh_areas[n]
             self.analysis_model.fibers[n] = Fiber(
@@ -256,7 +257,8 @@ class FyberModel:
             # Setup this step to run equilibrium analysis
             phi = step * delta_phi
             self.analysis_model.phi = phi
-            # I'm not sure if scipy.optimize.newton can fail here, might need to catch exception with bisection
+            # I'm not sure if scipy.optimize.newton can fail here
+            # might need to catch exception with bisection
             zero_strain = newton(
                 self.analysis_model.force_balance,
                 self.analysis_model.zero_strain_location,
@@ -267,15 +269,18 @@ class FyberModel:
             # Generate state data and save this load step results
             self.phi_list.append(round(phi, 8))
             self.M_list.append(moment)
-            # FIXME we initialize in gen_fiber_model, probably don't need to? maybe just append?
+            # FIXME we initialize in gen_fiber_model, don't need to? just append?
             if self.analysis_model.state:
                 self.states[step] = self.analysis_model.state
             if self.analysis_model.fail:
-                print(
-                    f"Analysis ended at phi={round(phi, 8)}\nFailure: {self.analysis_model.fail}"
-                )
+                f = [
+                    f"Analysis ended at phi={round(phi, 8)}",
+                    f"Failure: {self.analysis_model.fail}",
+                ]
+                print("\n".join(f))
                 break
-            # Don't necessarily want to break for tension failure - Say, if entire section is steel
+            # Don't necessarily want to break for tension failure
+            # e.g. entire section is steel
             # if M < 1:
             #   print("Capacity of entire section failed")
             #   break
@@ -336,7 +341,7 @@ class FyberModel:
         plt.show()
 
     def display_materials(self) -> None:
-        for mat_id in self.materials.keys():
+        for mat_id in self.materials:
             self.display_material(mat_id)
         plt.show()
 
@@ -344,7 +349,7 @@ class FyberModel:
         """Show the current geometry and mesh (equivalent to step zero of display_mc)"""
         fig, ax = plt.subplots(figsize=(self.figsize, self.figsize))
         patches: list[Patch] = []
-        for i, pt_ids in enumerate(self.mesh.elements):
+        for pt_ids in self.mesh.elements:
             p = [self.mesh.points[pt_id] for pt_id in pt_ids]
             patch = plt.Polygon(p, fc="Gray", ec="black", zorder=0)
             patches.append(patch)
@@ -436,10 +441,8 @@ class FyberModel:
             slider_fct.set_val(state)
             return []
 
-        print(
-            "Saving animated gif. This will take a while and take several dozen megs of space.\n"
-            "It's saving full frames and not optimizing."
-        )
+        print("Saving animated gif. This will take a while...")
+        print("It's saving full frames and not optimizing.")
         test = anim.FuncAnimation(fig, frame, frames=len(self.states))
         test.save("Moment_Curvature.gif", fps=16)
 
